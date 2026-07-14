@@ -1,0 +1,17 @@
+[proxmox]
+host = "192.168.1.11"
+username = "root"
+port = 22
+
+[docker]
+host = "192.168.1.14"
+username = "root"
+port = 22
+
+[homeassistant]
+host = "192.168.1.21"
+username = "root"
+port = 22
+
+[output]
+directory = "output"

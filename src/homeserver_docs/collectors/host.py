@@ -1,47 +1,40 @@
-"""
-Host collector.
-"""
+"""Proxmox host collector."""
 
 from __future__ import annotations
 
-import os
-import platform
-
+from homeserver_docs.config import load_config
 from homeserver_docs.models.host import Host
-from homeserver_docs.utils.command import CommandRunner
+from homeserver_docs.utils.ssh import SSHConnection
 
 
 class HostCollector:
     """Collect information about the Proxmox host."""
 
-    def __init__(self) -> None:
-        self.runner = CommandRunner()
+    def __init__(self, connection: SSHConnection | None = None) -> None:
+        if connection is None:
+            connection = SSHConnection(load_config().proxmox)
+
+        self.connection = connection
 
     def collect(self) -> Host:
-        """Collect host information."""
+        """Collect host information through SSH."""
 
-        hostname = self.runner.run(["hostname"])
+        hostname = self.connection.run("hostname")
+        proxmox_version = self.connection.run("pveversion")
+        kernel = self.connection.run("uname -r")
 
-        try:
-            version = self.runner.run(["pveversion"]).split()[1]
-        except Exception:
-            version = "unknown"
-
-        kernel = platform.release()
-
-        try:
-            cpu_model = platform.processor() or "unknown"
-        except Exception:
-            cpu_model = "unknown"
-
-        cpu_cores = os.cpu_count() or 0
-
-        memory_total = "unknown"
-        uptime = "unknown"
+        cpu_model = self.connection.run(
+            "lscpu | sed -n 's/^Model name:[[:space:]]*//p'"
+        )
+        cpu_cores = int(self.connection.run("nproc"))
+        memory_total = self.connection.run(
+            "free -h | awk '/^Mem:/ {print $2}'"
+        )
+        uptime = self.connection.run("uptime -p")
 
         return Host(
             hostname=hostname,
-            proxmox_version=version,
+            proxmox_version=proxmox_version,
             kernel=kernel,
             cpu_model=cpu_model,
             cpu_cores=cpu_cores,

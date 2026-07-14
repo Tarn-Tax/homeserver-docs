@@ -1,6 +1,12 @@
+"""Homeserver model."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 from homeserver_docs.models.host import Host
+from homeserver_docs.models.storage import Storage
+from homeserver_docs.models.virtual_machine import VirtualMachine
 
 
 @dataclass(slots=True)
@@ -8,7 +14,7 @@ class Homeserver:
     """Complete inventory of a homeserver environment."""
 
     host: Host
-    storage: list[object] = field(default_factory=list)
+    storage: list[Storage] = field(default_factory=list)
+    virtual_machines: list[VirtualMachine] = field(default_factory=list)
     networks: list[object] = field(default_factory=list)
-    virtual_machines: list[object] = field(default_factory=list)
     containers: list[object] = field(default_factory=list)
