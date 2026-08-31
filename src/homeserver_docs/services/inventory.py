@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeserver_docs.collectors.container import ContainerCollector
 from homeserver_docs.collectors.host import HostCollector
 from homeserver_docs.collectors.storage import StorageCollector
 from homeserver_docs.collectors.virtual_machine import VirtualMachineCollector
@@ -15,6 +16,7 @@ class InventoryService:
         self.host_collector = HostCollector()
         self.storage_collector = StorageCollector()
         self.virtual_machine_collector = VirtualMachineCollector()
+        self.container_collector = ContainerCollector()
 
     def collect(self) -> Homeserver:
         """Collect the complete homeserver inventory."""
@@ -23,4 +25,5 @@ class InventoryService:
             host=self.host_collector.collect(),
             storage=self.storage_collector.collect(),
             virtual_machines=self.virtual_machine_collector.collect(),
+            containers=self.container_collector.collect(),
         )
