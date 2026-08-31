@@ -68,18 +68,39 @@ def render_virtual_machine_table(
         return "Geen virtuele machines gevonden."
 
     rows = [
-        "| VMID | Naam | Status | RAM | Bootdisk | PID |",
-        "|---:|---|---|---:|---:|---:|",
+        "| VMID | Naam | Status | CPU | RAM | OS | Storage | Netwerk | Tags |",
+        "|---:|---|---|---:|---:|---|---|---|---|",
     ]
 
     for vm in virtual_machines:
+        storage = ", ".join(vm.storage) or "-"
+
+        networks = []
+
+        for interface in vm.network_interfaces:
+            network = interface.interface
+
+            if interface.bridge:
+                network += f" → {interface.bridge}"
+
+            if interface.mac_address:
+                network += f" ({interface.mac_address})"
+
+            networks.append(network)
+
+        network_text = "<br>".join(networks) or "-"
+        tags = ", ".join(vm.tags) or "-"
+
         rows.append(
             f"| {vm.vmid} "
             f"| {vm.name} "
             f"| {vm.status} "
+            f"| {vm.cpu_cores} "
             f"| {vm.memory_mb} MB "
-            f"| {vm.boot_disk_gb:.1f} GB "
-            f"| {vm.pid} |"
+            f"| {vm.guest_os or '-'} "
+            f"| {storage} "
+            f"| {network_text} "
+            f"| {tags} |"
         )
 
     return "\n".join(rows)
