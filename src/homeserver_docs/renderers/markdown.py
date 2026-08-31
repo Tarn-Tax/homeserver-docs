@@ -6,6 +6,7 @@ from pathlib import Path
 
 from homeserver_docs.models.container import Container
 from homeserver_docs.models.homeserver import Homeserver
+from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
 from homeserver_docs.models.virtual_machine import VirtualMachine
 
@@ -114,6 +115,31 @@ def render_container_table(containers: list[Container]) -> str:
     return "\n".join(rows)
 
 
+def render_network_table(networks: list[NetworkInterface]) -> str:
+    """Render Proxmox network configuration as Markdown."""
+
+    if not networks:
+        return "Geen netwerkinterfaces gevonden."
+
+    rows = [
+        "| Naam | Type | Methode | Adres | Gateway | Bridge-poorten | Omschrijving |",
+        "|---|---|---|---|---|---|---|",
+    ]
+
+    for network in networks:
+        rows.append(
+            f"| {network.name} "
+            f"| {network.interface_type} "
+            f"| {network.method} "
+            f"| {network.address or '-'} "
+            f"| {network.gateway or '-'} "
+            f"| {network.bridge_ports or '-'} "
+            f"| {network.comment or '-'} |"
+        )
+
+    return "\n".join(rows)
+
+
 class MarkdownRenderer:
     """Render the complete homeserver inventory."""
 
@@ -132,6 +158,7 @@ class MarkdownRenderer:
         vm_count = len(homeserver.virtual_machines)
         container_count = len(homeserver.containers)
         storage_count = len(homeserver.storage)
+        network_count = len(homeserver.networks)
 
         storage_table = render_storage_table(homeserver.storage)
         vm_table = render_virtual_machine_table(
@@ -139,6 +166,9 @@ class MarkdownRenderer:
         )
         container_table = render_container_table(
             homeserver.containers
+        )
+        network_table = render_network_table(
+            homeserver.networks
         )
 
         markdown = f"""# Homeserver
@@ -152,6 +182,7 @@ class MarkdownRenderer:
 | Virtuele machines | {vm_count} |
 | LXC-containers | {container_count} |
 | Storage locaties | {storage_count} |
+| Netwerkinterfaces | {network_count} |
 | Laatste inventarisatie | Nog niet beschikbaar |
 
 ## Proxmox-host
@@ -177,6 +208,10 @@ class MarkdownRenderer:
 ## LXC-containers
 
 {container_table}
+
+## Netwerk
+
+{network_table}
 """
 
         target.write_text(markdown, encoding="utf-8")
