@@ -11,8 +11,11 @@ from homeserver_docs.models.virtual_machine import (
     VirtualMachine,
     VirtualNetworkInterface,
 )
+from homeserver_docs.parsers.guest_network import parse_guest_ipv4_addresses
+from homeserver_docs.parsers.snapshot import parse_qm_snapshots
 from homeserver_docs.parsers.virtual_machine import parse_qm_list
 from homeserver_docs.parsers.virtual_machine_config import parse_qm_config
+from homeserver_docs.parsers.vm_status import parse_vm_uptime
 from homeserver_docs.utils.ssh import SSHConnection
 
 
@@ -56,6 +59,27 @@ class VirtualMachineCollector:
                 if tag.strip()
             ]
 
+            snapshots = self._collect_snapshots(vm.vmid)
+
+            ip_addresses: list[str] = []
+
+            if vm.status == "running" and config.get("agent"):
+                try:
+                    guest_output = self.connection.run(
+                        f"qm guest cmd {vm.vmid} "
+                        "network-get-interfaces"
+                    )
+                    ip_addresses = parse_guest_ipv4_addresses(
+                        guest_output
+                    )
+                except RuntimeError:
+                    ip_addresses = []
+
+            uptime: str | None = None
+
+            if vm.status == "running":
+                uptime = self._collect_uptime(vm.vmid)
+
             enriched.append(
                 replace(
                     vm,
@@ -68,16 +92,69 @@ class VirtualMachineCollector:
                     storage=storage,
                     disks=disks,
                     network_interfaces=networks,
+                    ip_addresses=ip_addresses,
                     guest_os=config.get("ostype"),
                     description=config.get("description"),
                     tags=tags,
+                    snapshots=snapshots,
                     startup_order=self._parse_startup_order(
                         config.get("startup")
                     ),
+                    uptime=uptime,
                 )
             )
 
         return enriched
+
+    def _collect_snapshots(self, vmid: int) -> list[str]:
+        """Collect snapshot names for a VM."""
+
+        try:
+            output = self.connection.run(
+                f"qm listsnapshot {vmid}"
+            )
+        except RuntimeError:
+            return []
+
+        return parse_qm_snapshots(output)
+
+    def _collect_uptime(self, vmid: int) -> str | None:
+        """Collect and format VM uptime."""
+
+        try:
+            output = self.connection.run(
+                f"qm status {vmid} --verbose"
+            )
+        except RuntimeError:
+            return None
+
+        seconds = parse_vm_uptime(output)
+
+        if seconds is None:
+            return None
+
+        return self._format_uptime(seconds)
+
+    @staticmethod
+    def _format_uptime(seconds: int) -> str:
+        """Convert uptime seconds to a readable value."""
+
+        days, remainder = divmod(seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)
+
+        parts: list[str] = []
+
+        if days:
+            parts.append(f"{days} d")
+
+        if hours:
+            parts.append(f"{hours} u")
+
+        if minutes or not parts:
+            parts.append(f"{minutes} min")
+
+        return " ".join(parts)
 
     @staticmethod
     def _parse_int(value: str | None) -> int | None:

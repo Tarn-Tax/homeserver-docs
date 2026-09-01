@@ -68,14 +68,16 @@ def render_virtual_machine_table(
         return "Geen virtuele machines gevonden."
 
     rows = [
-        "| VMID | Naam | Status | CPU | RAM | OS | Storage | Netwerk | Tags |",
-        "|---:|---|---|---:|---:|---|---|---|---|",
+        "| VMID | Naam | Status | CPU | RAM | OS | IP-adres | Uptime | Storage | Netwerk | Tags | Snapshots |",
+        "|---:|---|---|---:|---:|---|---|---|---|---|---|---|",
     ]
 
     for vm in virtual_machines:
         storage = ", ".join(vm.storage) or "-"
+        ip_addresses = ", ".join(vm.ip_addresses) or "-"
+        uptime = vm.uptime or "-"
 
-        networks = []
+        networks: list[str] = []
 
         for interface in vm.network_interfaces:
             network = interface.interface
@@ -90,6 +92,7 @@ def render_virtual_machine_table(
 
         network_text = "<br>".join(networks) or "-"
         tags = ", ".join(vm.tags) or "-"
+        snapshots = ", ".join(vm.snapshots) or "-"
 
         rows.append(
             f"| {vm.vmid} "
@@ -98,9 +101,12 @@ def render_virtual_machine_table(
             f"| {vm.cpu_cores} "
             f"| {vm.memory_mb} MB "
             f"| {vm.guest_os or '-'} "
+            f"| {ip_addresses} "
+            f"| {uptime} "
             f"| {storage} "
             f"| {network_text} "
-            f"| {tags} |"
+            f"| {tags} "
+            f"| {snapshots} |"
         )
 
     return "\n".join(rows)
@@ -136,7 +142,9 @@ def render_container_table(containers: list[Container]) -> str:
     return "\n".join(rows)
 
 
-def render_network_table(networks: list[NetworkInterface]) -> str:
+def render_network_table(
+    networks: list[NetworkInterface],
+) -> str:
     """Render Proxmox network configuration as Markdown."""
 
     if not networks:
@@ -181,13 +189,18 @@ class MarkdownRenderer:
         storage_count = len(homeserver.storage)
         network_count = len(homeserver.networks)
 
-        storage_table = render_storage_table(homeserver.storage)
+        storage_table = render_storage_table(
+            homeserver.storage
+        )
+
         vm_table = render_virtual_machine_table(
             homeserver.virtual_machines
         )
+
         container_table = render_container_table(
             homeserver.containers
         )
+
         network_table = render_network_table(
             homeserver.networks
         )
@@ -235,6 +248,9 @@ class MarkdownRenderer:
 {network_table}
 """
 
-        target.write_text(markdown, encoding="utf-8")
+        target.write_text(
+            markdown,
+            encoding="utf-8",
+        )
 
         return target

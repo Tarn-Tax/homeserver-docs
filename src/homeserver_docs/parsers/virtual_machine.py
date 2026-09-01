@@ -9,6 +9,7 @@ def parse_qm_list(output: str) -> list[VirtualMachine]:
     """Parse the output of `qm list`."""
 
     lines = [line for line in output.splitlines() if line.strip()]
+
     if len(lines) < 2:
         return []
 
@@ -16,6 +17,7 @@ def parse_qm_list(output: str) -> list[VirtualMachine]:
 
     for line in lines[1:]:
         parts = line.split()
+
         if len(parts) < 6:
             continue
 
