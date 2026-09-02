@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeserver_docs.collectors.container import ContainerCollector
+from homeserver_docs.collectors.disk import DiskCollector
 from homeserver_docs.collectors.host import HostCollector
 from homeserver_docs.collectors.network import NetworkCollector
 from homeserver_docs.collectors.storage import StorageCollector
@@ -21,6 +22,7 @@ class InventoryService:
         self.container_collector = ContainerCollector()
         self.network_collector = NetworkCollector()
         self.zfs_collector = ZfsCollector()
+        self.disk_collector = DiskCollector()
 
     def collect(self) -> Homeserver:
         """Collect the complete homeserver inventory."""
@@ -32,4 +34,5 @@ class InventoryService:
             containers=self.container_collector.collect(),
             networks=self.network_collector.collect(),
             zfs_pools=self.zfs_collector.collect(),
+            physical_disks=self.disk_collector.collect(),
         )

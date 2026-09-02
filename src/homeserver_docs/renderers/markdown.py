@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from homeserver_docs.models.container import Container
+from homeserver_docs.models.disk import PhysicalDisk
 from homeserver_docs.models.homeserver import Homeserver
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
@@ -256,6 +257,73 @@ def render_zfs_warnings(zfs_pools: list[ZfsPool]) -> str:
     return "\n".join(warnings)
 
 
+def render_disk_table(disks: list[PhysicalDisk]) -> str:
+    """Render physical disks and SMART information."""
+
+    if not disks:
+        return "Geen fysieke disks gevonden."
+
+    rows = [
+        "| Device | Model | Serienummer | Grootte | SMART | Temperatuur | Draaiuren |",
+        "|---|---|---|---:|---|---:|---:|",
+    ]
+
+    for disk in disks:
+        temperature = (
+            f"{disk.temperature_c} °C"
+            if disk.temperature_c is not None
+            else "-"
+        )
+
+        power_on_hours = (
+            f"{disk.power_on_hours} uur"
+            if disk.power_on_hours is not None
+            else "-"
+        )
+
+        rows.append(
+            f"| {disk.device} "
+            f"| {disk.model or '-'} "
+            f"| {disk.serial or '-'} "
+            f"| {disk.size or '-'} "
+            f"| {disk.smart_status or '-'} "
+            f"| {temperature} "
+            f"| {power_on_hours} |"
+        )
+
+    return "\n".join(rows)
+
+
+def render_disk_warnings(disks: list[PhysicalDisk]) -> str:
+    """Render SMART and temperature warnings."""
+
+    warnings: list[str] = []
+
+    for disk in disks:
+        if (
+            disk.smart_status
+            and disk.smart_status.upper() != "PASSED"
+        ):
+            warnings.append(
+                f"- **SMART-waarschuwing voor {disk.device}: "
+                f"{disk.smart_status}.**"
+            )
+
+        if (
+            disk.temperature_c is not None
+            and disk.temperature_c >= 60
+        ):
+            warnings.append(
+                f"- **Hoge temperatuur op {disk.device}: "
+                f"{disk.temperature_c} °C.**"
+            )
+
+    if not warnings:
+        return "Geen actuele SMART-waarschuwingen."
+
+    return "\n".join(warnings)
+
+
 class MarkdownRenderer:
     """Render the complete homeserver inventory."""
 
@@ -276,6 +344,7 @@ class MarkdownRenderer:
         storage_count = len(homeserver.storage)
         network_count = len(homeserver.networks)
         zfs_pool_count = len(homeserver.zfs_pools)
+        physical_disk_count = len(homeserver.physical_disks)
 
         storage_table = render_storage_table(
             homeserver.storage
@@ -301,6 +370,14 @@ class MarkdownRenderer:
             homeserver.zfs_pools
         )
 
+        disk_table = render_disk_table(
+            homeserver.physical_disks
+        )
+
+        disk_warnings = render_disk_warnings(
+            homeserver.physical_disks
+        )
+
         markdown = f"""# Homeserver
 
 ## Samenvatting
@@ -313,12 +390,19 @@ class MarkdownRenderer:
 | LXC-containers | {container_count} |
 | Storage locaties | {storage_count} |
 | ZFS-pools | {zfs_pool_count} |
+| Fysieke disks | {physical_disk_count} |
 | Netwerkinterfaces | {network_count} |
 | Laatste inventarisatie | Nog niet beschikbaar |
 
 ## Waarschuwingen
 
+### ZFS
+
 {zfs_warnings}
+
+### SMART
+
+{disk_warnings}
 
 ## Proxmox-host
 
@@ -339,6 +423,10 @@ class MarkdownRenderer:
 ## ZFS-status
 
 {zfs_table}
+
+## Fysieke disks / SMART
+
+{disk_table}
 
 ## Virtuele machines
 

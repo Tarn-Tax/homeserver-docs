@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from homeserver_docs.models.container import Container
+from homeserver_docs.models.disk import PhysicalDisk
 from homeserver_docs.models.host import Host
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
@@ -22,3 +23,4 @@ class Homeserver:
     containers: list[Container] = field(default_factory=list)
     networks: list[NetworkInterface] = field(default_factory=list)
     zfs_pools: list[ZfsPool] = field(default_factory=list)
+    physical_disks: list[PhysicalDisk] = field(default_factory=list)
