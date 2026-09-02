@@ -9,6 +9,7 @@ from homeserver_docs.models.host import Host
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
 from homeserver_docs.models.virtual_machine import VirtualMachine
+from homeserver_docs.models.zfs import ZfsPool
 
 
 @dataclass(slots=True)
@@ -20,3 +21,4 @@ class Homeserver:
     virtual_machines: list[VirtualMachine] = field(default_factory=list)
     containers: list[Container] = field(default_factory=list)
     networks: list[NetworkInterface] = field(default_factory=list)
+    zfs_pools: list[ZfsPool] = field(default_factory=list)

@@ -9,6 +9,7 @@ from homeserver_docs.models.homeserver import Homeserver
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
 from homeserver_docs.models.virtual_machine import VirtualMachine
+from homeserver_docs.models.zfs import ZfsPool
 
 
 def format_kib(value: int) -> str:
@@ -175,6 +176,86 @@ def render_network_table(
     return "\n".join(rows)
 
 
+def render_zfs_table(zfs_pools: list[ZfsPool]) -> str:
+    """Render ZFS pool health as Markdown."""
+
+    if not zfs_pools:
+        return "Geen ZFS-pools gevonden."
+
+    rows = [
+        "| Pool | Status | Gezond | Device | READ | WRITE | CKSUM | Datafouten |",
+        "|---|---|---|---|---:|---:|---:|---|",
+    ]
+
+    for pool in zfs_pools:
+        health = "OK" if pool.healthy else "WAARSCHUWING"
+
+        if not pool.devices:
+            rows.append(
+                f"| {pool.name} "
+                f"| {pool.state} "
+                f"| {health} "
+                f"| - | 0 | 0 | 0 "
+                f"| {pool.data_errors or '-'} |"
+            )
+            continue
+
+        for index, device in enumerate(pool.devices):
+            pool_name = pool.name if index == 0 else ""
+            pool_state = pool.state if index == 0 else ""
+            pool_health = health if index == 0 else ""
+            data_errors = (
+                pool.data_errors or "-"
+                if index == 0
+                else ""
+            )
+
+            rows.append(
+                f"| {pool_name} "
+                f"| {pool_state} "
+                f"| {pool_health} "
+                f"| {device.name} "
+                f"| {device.read_errors} "
+                f"| {device.write_errors} "
+                f"| {device.checksum_errors} "
+                f"| {data_errors} |"
+            )
+
+    return "\n".join(rows)
+
+
+def render_zfs_warnings(zfs_pools: list[ZfsPool]) -> str:
+    """Render warnings for unhealthy ZFS pools."""
+
+    warnings: list[str] = []
+
+    for pool in zfs_pools:
+        if pool.healthy:
+            continue
+
+        warnings.append(
+            f"- **ZFS-pool {pool.name}: controle vereist.**"
+        )
+
+        for device in pool.devices:
+            if (
+                device.read_errors
+                or device.write_errors
+                or device.checksum_errors
+            ):
+                warnings.append(
+                    f"  - `{device.name}`: "
+                    f"READ={device.read_errors}, "
+                    f"WRITE={device.write_errors}, "
+                    f"CKSUM={device.checksum_errors}"
+                )
+
+    if not warnings:
+        return "Geen actuele ZFS-waarschuwingen."
+
+    return "\n".join(warnings)
+
+
 class MarkdownRenderer:
     """Render the complete homeserver inventory."""
 
@@ -194,6 +275,7 @@ class MarkdownRenderer:
         container_count = len(homeserver.containers)
         storage_count = len(homeserver.storage)
         network_count = len(homeserver.networks)
+        zfs_pool_count = len(homeserver.zfs_pools)
 
         storage_table = render_storage_table(
             homeserver.storage
@@ -211,6 +293,14 @@ class MarkdownRenderer:
             homeserver.networks
         )
 
+        zfs_table = render_zfs_table(
+            homeserver.zfs_pools
+        )
+
+        zfs_warnings = render_zfs_warnings(
+            homeserver.zfs_pools
+        )
+
         markdown = f"""# Homeserver
 
 ## Samenvatting
@@ -222,8 +312,13 @@ class MarkdownRenderer:
 | Virtuele machines | {vm_count} |
 | LXC-containers | {container_count} |
 | Storage locaties | {storage_count} |
+| ZFS-pools | {zfs_pool_count} |
 | Netwerkinterfaces | {network_count} |
 | Laatste inventarisatie | Nog niet beschikbaar |
+
+## Waarschuwingen
+
+{zfs_warnings}
 
 ## Proxmox-host
 
@@ -240,6 +335,10 @@ class MarkdownRenderer:
 ## Storage
 
 {storage_table}
+
+## ZFS-status
+
+{zfs_table}
 
 ## Virtuele machines
 
