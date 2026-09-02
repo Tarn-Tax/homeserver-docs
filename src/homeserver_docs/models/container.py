@@ -19,5 +19,7 @@ class Container:
     network_interfaces: list[str] = field(default_factory=list)
     mountpoints: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    snapshots: list[str] = field(default_factory=list)
+    backup_status: str | None = None
     startup_order: int | None = None
     description: str | None = None

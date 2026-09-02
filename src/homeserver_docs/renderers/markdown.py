@@ -121,13 +121,15 @@ def render_container_table(containers: list[Container]) -> str:
         return "Geen LXC-containers gevonden."
 
     rows = [
-        "| CTID | Naam | Status | CPU | RAM | Swap | Rootdisk | Netwerk | Tags |",
-        "|---:|---|---|---:|---:|---:|---:|---|---|",
+        "| CTID | Naam | Status | CPU | RAM | Swap | Rootdisk | Netwerk | Tags | Snapshots | Laatste back-up |",
+        "|---:|---|---|---:|---:|---:|---:|---|---|---|---|",
     ]
 
     for container in containers:
         networks = "<br>".join(container.network_interfaces) or "-"
         tags = ", ".join(container.tags) or "-"
+        snapshots = ", ".join(container.snapshots) or "-"
+        backup = container.backup_status or "-"
 
         rows.append(
             f"| {container.vmid} "
@@ -138,7 +140,9 @@ def render_container_table(containers: list[Container]) -> str:
             f"| {format_optional(container.swap_mb, ' MB')} "
             f"| {format_optional(container.root_disk_gb, ' GB')} "
             f"| {networks} "
-            f"| {tags} |"
+            f"| {tags} "
+            f"| {snapshots} "
+            f"| {backup} |"
         )
 
     return "\n".join(rows)

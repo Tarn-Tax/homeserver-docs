@@ -7,8 +7,10 @@ from dataclasses import replace
 
 from homeserver_docs.config import load_config
 from homeserver_docs.models.container import Container
+from homeserver_docs.parsers.backup import parse_latest_backups
 from homeserver_docs.parsers.container import parse_pct_list
 from homeserver_docs.parsers.container_config import parse_pct_config
+from homeserver_docs.parsers.snapshot import parse_qm_snapshots
 from homeserver_docs.utils.ssh import SSHConnection
 
 
@@ -22,10 +24,12 @@ class ContainerCollector:
         self.connection = connection
 
     def collect(self) -> list[Container]:
-        """Collect LXC containers and enrich them with configuration details."""
+        """Collect LXC containers and configuration details."""
 
         output = self.connection.run("pct list")
         containers = parse_pct_list(output)
+
+        latest_backups = self._collect_latest_backups()
 
         enriched_containers: list[Container] = []
 
@@ -57,16 +61,32 @@ class ContainerCollector:
                 if tag.strip()
             ]
 
+            snapshots = self._collect_snapshots(
+                container.vmid
+            )
+
+            backup_status = latest_backups.get(
+                container.vmid
+            )
+
             enriched_containers.append(
                 replace(
                     container,
-                    memory_mb=self._parse_int(config.get("memory")),
-                    swap_mb=self._parse_int(config.get("swap")),
+                    memory_mb=self._parse_int(
+                        config.get("memory")
+                    ),
+                    swap_mb=self._parse_int(
+                        config.get("swap")
+                    ),
                     root_disk_gb=root_disk_gb,
-                    cpu_cores=self._parse_int(config.get("cores")),
+                    cpu_cores=self._parse_int(
+                        config.get("cores")
+                    ),
                     network_interfaces=network_interfaces,
                     mountpoints=mountpoints,
                     tags=tags,
+                    snapshots=snapshots,
+                    backup_status=backup_status,
                     startup_order=self._parse_startup_order(
                         config.get("startup")
                     ),
@@ -75,6 +95,34 @@ class ContainerCollector:
             )
 
         return enriched_containers
+
+    def _collect_latest_backups(self) -> dict[int, str]:
+        """Collect latest known Proxmox backup per guest."""
+
+        try:
+            output = self.connection.run(
+                "pvesh get /nodes/taxsrv/storage/local/content "
+                "--content backup --output-format json"
+            )
+        except RuntimeError:
+            return {}
+
+        try:
+            return parse_latest_backups(output)
+        except (ValueError, TypeError):
+            return {}
+
+    def _collect_snapshots(self, vmid: int) -> list[str]:
+        """Collect snapshot names for an LXC container."""
+
+        try:
+            output = self.connection.run(
+                f"pct listsnapshot {vmid}"
+            )
+        except RuntimeError:
+            return []
+
+        return parse_qm_snapshots(output)
 
     @staticmethod
     def _parse_int(value: str | None) -> int | None:
@@ -96,6 +144,7 @@ class ContainerCollector:
             return None
 
         match = re.search(r"size=([\d.]+)([GM])", value)
+
         if not match:
             return None
 
@@ -109,12 +158,13 @@ class ContainerCollector:
 
     @staticmethod
     def _parse_startup_order(value: str | None) -> int | None:
-        """Extract the startup order from a Proxmox startup value."""
+        """Extract the startup order."""
 
         if not value:
             return None
 
         match = re.search(r"order=(\d+)", value)
+
         if not match:
             return None
 
