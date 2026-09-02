@@ -68,14 +68,15 @@ def render_virtual_machine_table(
         return "Geen virtuele machines gevonden."
 
     rows = [
-        "| VMID | Naam | Status | CPU | RAM | OS | IP-adres | Uptime | Storage | Netwerk | Tags | Snapshots |",
-        "|---:|---|---|---:|---:|---|---|---|---|---|---|---|",
+        "| VMID | Naam | Status | CPU | RAM | OS | IP-adres | Uptime | Storage | Netwerk | Tags | Snapshots | Laatste back-up |",
+        "|---:|---|---|---:|---:|---|---|---|---|---|---|---|---|",
     ]
 
     for vm in virtual_machines:
         storage = ", ".join(vm.storage) or "-"
         ip_addresses = ", ".join(vm.ip_addresses) or "-"
         uptime = vm.uptime or "-"
+        backup = vm.backup_status or "-"
 
         networks: list[str] = []
 
@@ -106,7 +107,8 @@ def render_virtual_machine_table(
             f"| {storage} "
             f"| {network_text} "
             f"| {tags} "
-            f"| {snapshots} |"
+            f"| {snapshots} "
+            f"| {backup} |"
         )
 
     return "\n".join(rows)

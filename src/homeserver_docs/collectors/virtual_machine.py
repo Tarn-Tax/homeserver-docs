@@ -11,6 +11,7 @@ from homeserver_docs.models.virtual_machine import (
     VirtualMachine,
     VirtualNetworkInterface,
 )
+from homeserver_docs.parsers.backup import parse_latest_backups
 from homeserver_docs.parsers.guest_network import parse_guest_ipv4_addresses
 from homeserver_docs.parsers.snapshot import parse_qm_snapshots
 from homeserver_docs.parsers.virtual_machine import parse_qm_list
@@ -33,6 +34,8 @@ class VirtualMachineCollector:
 
         output = self.connection.run("qm list")
         virtual_machines = parse_qm_list(output)
+
+        latest_backups = self._collect_latest_backups()
 
         enriched: list[VirtualMachine] = []
 
@@ -80,6 +83,8 @@ class VirtualMachineCollector:
             if vm.status == "running":
                 uptime = self._collect_uptime(vm.vmid)
 
+            backup_status = latest_backups.get(vm.vmid)
+
             enriched.append(
                 replace(
                     vm,
@@ -97,6 +102,7 @@ class VirtualMachineCollector:
                     description=config.get("description"),
                     tags=tags,
                     snapshots=snapshots,
+                    backup_status=backup_status,
                     startup_order=self._parse_startup_order(
                         config.get("startup")
                     ),
@@ -105,6 +111,22 @@ class VirtualMachineCollector:
             )
 
         return enriched
+
+    def _collect_latest_backups(self) -> dict[int, str]:
+        """Collect latest known Proxmox backup per VM."""
+
+        try:
+            output = self.connection.run(
+                "pvesh get /nodes/taxsrv/storage/local/content "
+                "--content backup --output-format json"
+            )
+        except RuntimeError:
+            return {}
+
+        try:
+            return parse_latest_backups(output)
+        except (ValueError, TypeError):
+            return {}
 
     def _collect_snapshots(self, vmid: int) -> list[str]:
         """Collect snapshot names for a VM."""
