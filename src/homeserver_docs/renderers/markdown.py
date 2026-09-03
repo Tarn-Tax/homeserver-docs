@@ -8,6 +8,7 @@ from datetime import datetime
 
 from homeserver_docs.models.container import Container
 from homeserver_docs.models.disk import PhysicalDisk
+from homeserver_docs.models.docker import DockerContainer
 from homeserver_docs.models.homeserver import Homeserver
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
@@ -325,6 +326,32 @@ def render_disk_warnings(disks: list[PhysicalDisk]) -> str:
 
     return "\n".join(warnings)
 
+def render_docker_table(
+    containers: list[DockerContainer],
+) -> str:
+    """Render Docker containers as Markdown."""
+
+    if not containers:
+        return "Geen Docker-containers gevonden."
+
+    rows = [
+        "| Naam | Image | Status | Health | Poorten | Netwerk | Compose-project | Service |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+
+    for container in containers:
+        rows.append(
+            f"| {container.name} "
+            f"| {container.image} "
+            f"| {container.status} "
+            f"| {container.health or '-'} "
+            f"| {container.ports or '-'} "
+            f"| {container.networks or '-'} "
+            f"| {container.compose_project or '-'} "
+            f"| {container.compose_service or '-'} |"
+        )
+
+    return "\n".join(rows)
 
 class MarkdownRenderer:
     """Render the complete homeserver inventory."""
@@ -348,6 +375,7 @@ class MarkdownRenderer:
         network_count = len(homeserver.networks)
         zfs_pool_count = len(homeserver.zfs_pools)
         physical_disk_count = len(homeserver.physical_disks)
+        docker_count = len(homeserver.docker_containers)
 
         storage_table = render_storage_table(
             homeserver.storage
@@ -381,6 +409,10 @@ class MarkdownRenderer:
             homeserver.physical_disks
         )
 
+        docker_table = render_docker_table(
+            homeserver.docker_containers
+        )
+        
         markdown = f"""# Homeserver
 
 ## Samenvatting
@@ -391,6 +423,7 @@ class MarkdownRenderer:
 | Proxmox | {host.proxmox_version} |
 | Virtuele machines | {vm_count} |
 | LXC-containers | {container_count} |
+| Docker-containers | {docker_count} |
 | Storage locaties | {storage_count} |
 | ZFS-pools | {zfs_pool_count} |
 | Fysieke disks | {physical_disk_count} |
@@ -438,6 +471,10 @@ class MarkdownRenderer:
 ## LXC-containers
 
 {container_table}
+
+## Docker-containers
+
+{docker_table}
 
 ## Netwerk
 

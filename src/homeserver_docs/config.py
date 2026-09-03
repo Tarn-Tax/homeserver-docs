@@ -14,6 +14,15 @@ class ServerConfig:
     host: str
     username: str
     port: int = 22
+    identity_file: Path | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.identity_file, str):
+            object.__setattr__(
+                self,
+                "identity_file",
+                Path(self.identity_file),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +46,9 @@ def load_config(path: Path = Path("homeserver.toml")) -> AppConfig:
     """Load application configuration from a TOML file."""
 
     if not path.is_file():
-        raise FileNotFoundError(f"Configuration file not found: {path}")
+        raise FileNotFoundError(
+            f"Configuration file not found: {path}"
+        )
 
     with path.open("rb") as config_file:
         data = tomllib.load(config_file)
@@ -46,5 +57,7 @@ def load_config(path: Path = Path("homeserver.toml")) -> AppConfig:
         proxmox=ServerConfig(**data["proxmox"]),
         docker=ServerConfig(**data["docker"]),
         homeassistant=ServerConfig(**data["homeassistant"]),
-        output=OutputConfig(directory=Path(data["output"]["directory"])),
+        output=OutputConfig(
+            directory=Path(data["output"]["directory"])
+        ),
     )

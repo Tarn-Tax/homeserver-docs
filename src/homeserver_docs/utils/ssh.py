@@ -24,11 +24,24 @@ class SSHConnection:
             "ConnectTimeout=10",
             "-o",
             "ServerAliveInterval=5",
-            "-p",
-            str(self.config.port),
-            f"{self.config.username}@{self.config.host}",
-            command,
         ]
+
+        if self.config.identity_file is not None:
+            ssh_command.extend(
+                [
+                    "-i",
+                    str(self.config.identity_file),
+                ]
+            )
+
+        ssh_command.extend(
+            [
+                "-p",
+                str(self.config.port),
+                f"{self.config.username}@{self.config.host}",
+                command,
+            ]
+        )
 
         try:
             result = subprocess.run(
