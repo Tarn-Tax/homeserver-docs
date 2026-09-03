@@ -14,6 +14,7 @@ class DockerContainer:
     state: str
     status: str
     health: str | None = None
+    restart_policy: str | None = None
     ports: str | None = None
     networks: str | None = None
     compose_project: str | None = None

@@ -21,7 +21,7 @@ class DockerCollector:
         self.connection = connection
 
     def collect(self) -> list[DockerContainer]:
-        """Collect running Docker containers and mount information."""
+        """Collect running Docker containers and details."""
 
         output = self.connection.run(
             "docker ps --format '{{json .}}'"
@@ -33,11 +33,15 @@ class DockerCollector:
 
         for container in containers:
             mounts = self._collect_mounts(container.name)
+            restart_policy = self._collect_restart_policy(
+                container.name
+            )
 
             enriched.append(
                 replace(
                     container,
                     mounts=mounts,
+                    restart_policy=restart_policy,
                 )
             )
 
@@ -75,3 +79,22 @@ class DockerCollector:
             )
 
         return mounts
+
+    def _collect_restart_policy(
+        self,
+        container_name: str,
+    ) -> str | None:
+        """Collect Docker restart policy."""
+
+        try:
+            output = self.connection.run(
+                "docker inspect "
+                f"{container_name} "
+                "--format='{{.HostConfig.RestartPolicy.Name}}'"
+            )
+        except RuntimeError:
+            return None
+
+        value = output.strip()
+
+        return value or None
