@@ -336,11 +336,13 @@ def render_docker_table(
         return "Geen Docker-containers gevonden."
 
     rows = [
-        "| Naam | Image | Status | Health | Poorten | Netwerk | Compose-project | Service |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Naam | Image | Status | Health | Poorten | Netwerk | Compose-project | Service | Mounts |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
 
     for container in containers:
+        mounts = "<br>".join(container.mounts) or "-"
+
         rows.append(
             f"| {container.name} "
             f"| {container.image} "
@@ -349,7 +351,8 @@ def render_docker_table(
             f"| {container.ports or '-'} "
             f"| {container.networks or '-'} "
             f"| {container.compose_project or '-'} "
-            f"| {container.compose_service or '-'} |"
+            f"| {container.compose_service or '-'} "
+            f"| {mounts} |"
         )
 
     return "\n".join(rows)

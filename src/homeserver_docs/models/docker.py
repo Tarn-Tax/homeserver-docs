@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+from dataclasses import dataclass, field
 
 @dataclass(frozen=True, slots=True)
 class DockerContainer:
@@ -20,3 +19,4 @@ class DockerContainer:
     compose_project: str | None = None
     compose_service: str | None = None
     compose_file: str | None = None
+    mounts: list[str] = field(default_factory=list)
