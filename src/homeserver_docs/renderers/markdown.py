@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from datetime import datetime
+
 from homeserver_docs.models.container import Container
 from homeserver_docs.models.disk import PhysicalDisk
 from homeserver_docs.models.homeserver import Homeserver
@@ -338,6 +340,7 @@ class MarkdownRenderer:
         target = output_dir / "Homeserver.md"
 
         host = homeserver.host
+        inventory_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         vm_count = len(homeserver.virtual_machines)
         container_count = len(homeserver.containers)
@@ -392,7 +395,7 @@ class MarkdownRenderer:
 | ZFS-pools | {zfs_pool_count} |
 | Fysieke disks | {physical_disk_count} |
 | Netwerkinterfaces | {network_count} |
-| Laatste inventarisatie | Nog niet beschikbaar |
+| Laatste inventarisatie | {inventory_time} |
 
 ## Waarschuwingen
 
