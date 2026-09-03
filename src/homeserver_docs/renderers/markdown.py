@@ -9,6 +9,7 @@ from datetime import datetime
 from homeserver_docs.models.container import Container
 from homeserver_docs.models.disk import PhysicalDisk
 from homeserver_docs.models.docker import DockerContainer
+from homeserver_docs.models.docker_stack import DockerStack
 from homeserver_docs.models.homeserver import Homeserver
 from homeserver_docs.models.network import NetworkInterface
 from homeserver_docs.models.storage import Storage
@@ -353,6 +354,32 @@ def render_docker_table(
 
     return "\n".join(rows)
 
+def render_docker_stack_table(
+    stacks: list[DockerStack],
+) -> str:
+    """Render Docker Compose stacks as Markdown."""
+
+    if not stacks:
+        return "Geen Docker Compose-stacks gevonden."
+
+    rows = [
+        "| Stack | Containers | Draaiend | Healthy | Compose-bestand |",
+        "|---|---|---:|---:|---|",
+    ]
+
+    for stack in stacks:
+        containers = "<br>".join(stack.containers) or "-"
+
+        rows.append(
+            f"| {stack.name} "
+            f"| {containers} "
+            f"| {stack.running_count} "
+            f"| {stack.healthy_count} "
+            f"| {stack.compose_file or '-'} |"
+        )
+
+    return "\n".join(rows)
+
 class MarkdownRenderer:
     """Render the complete homeserver inventory."""
 
@@ -412,7 +439,9 @@ class MarkdownRenderer:
         docker_table = render_docker_table(
             homeserver.docker_containers
         )
-        
+        docker_stack_table = render_docker_stack_table(
+            homeserver.docker_stacks
+       )
         markdown = f"""# Homeserver
 
 ## Samenvatting
@@ -471,6 +500,10 @@ class MarkdownRenderer:
 ## LXC-containers
 
 {container_table}
+
+## Docker Compose-stacks
+
+{docker_stack_table}
 
 ## Docker-containers
 

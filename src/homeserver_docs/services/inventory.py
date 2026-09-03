@@ -11,6 +11,7 @@ from homeserver_docs.collectors.storage import StorageCollector
 from homeserver_docs.collectors.virtual_machine import VirtualMachineCollector
 from homeserver_docs.collectors.zfs import ZfsCollector
 from homeserver_docs.models.homeserver import Homeserver
+from homeserver_docs.services.docker_stacks import build_docker_stacks
 
 
 class InventoryService:
@@ -29,12 +30,18 @@ class InventoryService:
     def collect(self) -> Homeserver:
         """Collect the complete homeserver inventory."""
 
+        docker_containers = self.docker_collector.collect()
+        docker_stacks = build_docker_stacks(
+            docker_containers
+        )
+
         return Homeserver(
             host=self.host_collector.collect(),
             storage=self.storage_collector.collect(),
             virtual_machines=self.virtual_machine_collector.collect(),
             containers=self.container_collector.collect(),
-            docker_containers=self.docker_collector.collect(),
+            docker_containers=docker_containers,
+            docker_stacks=docker_stacks,
             networks=self.network_collector.collect(),
             zfs_pools=self.zfs_collector.collect(),
             physical_disks=self.disk_collector.collect(),
